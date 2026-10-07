@@ -20,6 +20,9 @@ Venta pagada: baja stock.
 Compra: sube stock.
 Stock 0: bloquear venta.
 El stock inicial de un producto se registra como movimiento STOCK_INICIAL.
+El catalogo interno permite ajustes manuales +1/-1.
+Un ajuste que intente dejar stock menor a 0 es rechazado por el backend.
+Los cambios manuales se registran como AJUSTE_MANUAL en movimientos_stock.
 
 ## Scanner
 USB/HID como teclado: codigo + Enter.
@@ -30,7 +33,8 @@ En POS el mismo codigo agrega el producto al carrito.
 - POS basico funcional.
 - Pago efectivo y Yape manual.
 - Registro de productos desde interfaz.
-- Listado de productos y alertas de stock bajo/agoutado.
+- Listado de productos y alertas de stock bajo/agotado.
+- Ajuste manual de stock desde catalogo interno.
 - Actualizacion de inventario mediante Socket.IO.
 
 ## Modulos

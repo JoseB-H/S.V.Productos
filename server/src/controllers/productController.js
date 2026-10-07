@@ -72,3 +72,70 @@ export async function createProduct(req,res,next){
     next(e);
   }
 }
+
+export async function adjustStock(req,res,next){
+  const db=await pool.connect();
+
+  try{
+    const productId=Number(req.params.id);
+    const delta=Number(req.body.delta);
+
+    if(!Number.isInteger(productId)||productId<=0){
+      return res.status(400).json({message:"Producto invalido"});
+    }
+
+    if(!Number.isInteger(delta)||delta===0){
+      return res.status(400).json({message:"El ajuste debe ser un numero entero distinto de 0"});
+    }
+
+    await db.query("BEGIN");
+
+    const currentResult=await db.query(
+      "SELECT id,nombre,stock FROM productos WHERE id=$1 AND activo=TRUE FOR UPDATE",
+      [productId]
+    );
+
+    if(!currentResult.rows.length){
+      await db.query("ROLLBACK");
+      return res.status(404).json({message:"Producto no encontrado"});
+    }
+
+    const product=currentResult.rows[0];
+    const previousStock=Number(product.stock);
+    const newStock=previousStock+delta;
+
+    if(newStock<0){
+      await db.query("ROLLBACK");
+      return res.status(409).json({
+        message:"El stock no puede ser menor a 0",
+        stock:previousStock
+      });
+    }
+
+    const updatedResult=await db.query(
+      "UPDATE productos SET stock=$1,actualizado_en=NOW() WHERE id=$2 RETURNING id,nombre,stock,stock_minimo",
+      [newStock,productId]
+    );
+
+    await db.query(
+      "INSERT INTO movimientos_stock(producto_id,tipo,cantidad,stock_anterior,stock_nuevo,referencia_tipo) VALUES($1,'AJUSTE_MANUAL',$2,$3,$4,'PRODUCTO')",
+      [productId,delta,previousStock,newStock]
+    );
+
+    await db.query("COMMIT");
+
+    const updated=updatedResult.rows[0];
+    req.app.get("io")?.emit("inventory:updated",{productId});
+
+    res.json({
+      ...updated,
+      previousStock,
+      delta
+    });
+  }catch(e){
+    try{await db.query("ROLLBACK");}catch{}
+    next(e);
+  }finally{
+    db.release();
+  }
+}

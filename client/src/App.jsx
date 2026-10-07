@@ -27,6 +27,7 @@ export default function App(){
   const [productForm,setProductForm]=useState(emptyProduct);
   const [productMessage,setProductMessage]=useState("");
   const [savingProduct,setSavingProduct]=useState(false);
+  const [adjustingProductId,setAdjustingProductId]=useState(null);
   const inputRef=useRef(null);
   const productBarcodeRef=useRef(null);
 
@@ -193,6 +194,43 @@ export default function App(){
       setProductMessage(error.message);
     }finally{
       setSavingProduct(false);
+    }
+  }
+
+  async function adjustStock(product,delta){
+    if(adjustingProductId!==null) return;
+    if(delta<0&&product.stock<=0){
+      setProductMessage("El stock de "+product.nombre+" ya esta en 0 y no puede disminuir mas.");
+      return;
+    }
+
+    setProductMessage("");
+    setAdjustingProductId(product.id);
+
+    try{
+      const response=await fetch(API+"/products/"+product.id+"/stock",{
+        method:"PATCH",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({delta})
+      });
+
+      const result=await response.json();
+      if(!response.ok) throw new Error(result.message||"No se pudo ajustar el stock");
+
+      setProducts(current=>current.map(item=>
+        item.id===product.id?{...item,stock:result.stock}:item
+      ));
+
+      setProductMessage(
+        product.nombre+": stock "+result.previousStock+
+        (result.delta>0?" + ":" - ")+Math.abs(result.delta)+
+        " = "+result.stock
+      );
+    }catch(error){
+      setProductMessage(error.message);
+      await loadProducts();
+    }finally{
+      setAdjustingProductId(null);
     }
   }
 
@@ -444,15 +482,41 @@ export default function App(){
             {products.map(product=>{
               const low=product.stock<=product.stock_minimo;
               const empty=product.stock===0;
+              const busy=adjustingProductId===product.id;
+
               return <article className="product-row" key={product.id}>
-                <div>
+                <div className="product-row-main">
                   <strong>{product.nombre}</strong>
                   <small>{product.codigo_barras}</small>
                 </div>
+
                 <span>S/ {Number(product.precio_venta).toFixed(2)}</span>
-                <span className={empty?"stock-badge empty-stock":low?"stock-badge low-stock":"stock-badge"}>
-                  {empty?"Agotado":"Stock "+product.stock}
-                </span>
+
+                <div className="stock-control">
+                  <button
+                    type="button"
+                    className="stock-button"
+                    disabled={busy||empty}
+                    onClick={()=>adjustStock(product,-1)}
+                    title={empty?"El stock ya esta en 0":"Disminuir stock en 1"}
+                  >
+                    −
+                  </button>
+
+                  <span className={empty?"stock-badge empty-stock":low?"stock-badge low-stock":"stock-badge"}>
+                    {empty?"Stock 0":"Stock "+product.stock}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="stock-button add-stock"
+                    disabled={busy}
+                    onClick={()=>adjustStock(product,1)}
+                    title="Aumentar stock en 1"
+                  >
+                    +
+                  </button>
+                </div>
               </article>;
             })}
           </div>
