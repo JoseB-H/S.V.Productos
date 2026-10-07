@@ -19,9 +19,19 @@ Nunca negativo.
 Venta pagada: baja stock.
 Compra: sube stock.
 Stock 0: bloquear venta.
+El stock inicial de un producto se registra como movimiento STOCK_INICIAL.
 
 ## Scanner
 USB/HID como teclado: codigo + Enter.
+En la pantalla Productos el scanner puede llenar el codigo de barras al registrar.
+En POS el mismo codigo agrega el producto al carrito.
+
+## Estado actual
+- POS basico funcional.
+- Pago efectivo y Yape manual.
+- Registro de productos desde interfaz.
+- Listado de productos y alertas de stock bajo/agoutado.
+- Actualizacion de inventario mediante Socket.IO.
 
 ## Modulos
 Dashboard, POS, Productos, Inventario, Catalogo, Compras, Proveedores, Clientes, Ventas, Reportes, Usuarios y Configuracion.
